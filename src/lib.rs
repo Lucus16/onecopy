@@ -4,57 +4,20 @@ pub mod le {
     use core::mem::transmute;
 
     pub trait Writer {
-        fn write_u8(&mut self, item: u8) -> &mut Self;
-        fn write_u16(&mut self, item: u16) -> &mut Self;
-        fn write_u32(&mut self, item: u32) -> &mut Self;
-        fn write_u64(&mut self, item: u64) -> &mut Self;
-        fn write_u128(&mut self, item: u128) -> &mut Self;
+        fn write_slice(&mut self, items: &[u8]);
         fn write<T: Writable>(&mut self, item: T) -> &mut Self;
     }
 
     pub trait Writable {
-        fn write_to<T: Writer>(self, writer: &mut T);
+        fn write_to<W: Writer>(self, writer: &mut W);
     }
 
     impl Writer for &mut [u8] {
         #[inline]
-        fn write_u8(&mut self, item: u8) -> &mut Self {
-            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(1);
-            h[0] = item;
+        fn write_slice(&mut self, items: &[u8]) {
+            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(items.len());
+            h.copy_from_slice(items);
             *self = t;
-            self
-        }
-
-        #[inline]
-        fn write_u16(&mut self, item: u16) -> &mut Self {
-            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(2);
-            h.copy_from_slice(&item.to_le_bytes());
-            *self = t;
-            self
-        }
-
-        #[inline]
-        fn write_u32(&mut self, item: u32) -> &mut Self {
-            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(4);
-            h.copy_from_slice(&item.to_le_bytes());
-            *self = t;
-            self
-        }
-
-        #[inline]
-        fn write_u64(&mut self, item: u64) -> &mut Self {
-            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(8);
-            h.copy_from_slice(&item.to_le_bytes());
-            *self = t;
-            self
-        }
-
-        #[inline]
-        fn write_u128(&mut self, item: u128) -> &mut Self {
-            let (h, t) = core::mem::replace(self, &mut []).split_at_mut(16);
-            h.copy_from_slice(&item.to_le_bytes());
-            *self = t;
-            self
         }
 
         #[inline]
@@ -66,85 +29,85 @@ pub mod le {
 
     impl Writable for u8 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u8(self);
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for i8 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u8(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for u16 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u16(self);
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for i16 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u16(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for u32 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u32(self);
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for i32 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u32(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for f32 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u32(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write::<u32>(unsafe { transmute(self) });
         }
     }
 
     impl Writable for u64 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u64(self);
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for i64 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u64(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for f64 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u64(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write::<u64>(unsafe { transmute(self) });
         }
     }
 
     impl Writable for u128 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u128(self);
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
     impl Writable for i128 {
         #[inline]
-        fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u128(unsafe { transmute(self) });
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            writer.write_slice(&self.to_le_bytes())
         }
     }
 
@@ -272,14 +235,14 @@ mod tests {
         let mut arr2 = [0u8; 15];
         let mut buf1: &mut [u8] = &mut arr1;
         let mut buf2: &mut [u8] = &mut arr2;
-        buf1.write_u8(0x01);
-        buf1.write_u16(0x2312);
-        buf1.write_u32(0x67564534);
-        buf1.write_u64(0xefdecdbcab9a8978);
-        buf2.write_u64(0x7867564534231201);
-        buf2.write_u32(0xbcab9a89);
-        buf2.write_u16(0xdecd);
-        buf2.write_u8(0xef);
+        buf1.write(0x01u8);
+        buf1.write(0x2312u16);
+        buf1.write(0x67564534u32);
+        buf1.write(0xefdecdbcab9a8978u64);
+        buf2.write(0x7867564534231201u64);
+        buf2.write(0xbcab9a89u32);
+        buf2.write(0xdecdu16);
+        buf2.write(0xefu8);
         assert_eq!(buf1, []);
         assert_eq!(buf2, []);
         assert_eq!(arr1, arr2);
