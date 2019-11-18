@@ -1,6 +1,8 @@
 #![no_std]
 
 pub mod le {
+    use core::mem::transmute;
+
     pub trait Writer {
         fn write_u8(&mut self, item: u8) -> &mut Self;
         fn write_u16(&mut self, item: u16) -> &mut Self;
@@ -72,7 +74,7 @@ pub mod le {
     impl Writable for i8 {
         #[inline]
         fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u8(self as u8);
+            writer.write_u8(unsafe { transmute(self) });
         }
     }
 
@@ -86,29 +88,133 @@ pub mod le {
     impl Writable for i16 {
         #[inline]
         fn write_to<T: Writer>(self, writer: &mut T) {
-            writer.write_u16(self as u16);
+            writer.write_u16(unsafe { transmute(self) });
         }
     }
 
-    impl <T: Writable + Copy> Writable for &T {
+    impl Writable for u32 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u32(self);
+        }
+    }
+
+    impl Writable for i32 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u32(unsafe { transmute(self) });
+        }
+    }
+
+    impl Writable for f32 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u32(unsafe { transmute(self) });
+        }
+    }
+
+    impl Writable for u64 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u64(self);
+        }
+    }
+
+    impl Writable for i64 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u64(unsafe { transmute(self) });
+        }
+    }
+
+    impl Writable for f64 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u64(unsafe { transmute(self) });
+        }
+    }
+
+    impl Writable for u128 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u128(self);
+        }
+    }
+
+    impl Writable for i128 {
+        #[inline]
+        fn write_to<T: Writer>(self, writer: &mut T) {
+            writer.write_u128(unsafe { transmute(self) });
+        }
+    }
+
+    impl<T: Writable + Copy> Writable for &T {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             (*self).write_to(writer);
         }
     }
 
-    impl <T: Writable + Copy> Writable for &mut T {
+    impl<T: Writable + Copy> Writable for &mut T {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             (*self).write_to(writer);
         }
     }
 
-    impl <T0: Writable, T1: Writable> Writable for (T0, T1) {
+    impl<T: Writable + Copy> Writable for &[T] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            for item in self {
+                item.write_to(writer);
+            }
+        }
+    }
+
+    impl<T: Writable + Copy> Writable for &mut [T] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            for item in self {
+                item.write_to(writer);
+            }
+        }
+    }
+
+    impl<T0: Writable, T1: Writable> Writable for (T0, T1) {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             self.0.write_to(writer);
             self.1.write_to(writer);
+        }
+    }
+
+    impl<T0, T1, T2> Writable for (T0, T1, T2)
+    where
+        T0: Writable,
+        T1: Writable,
+        T2: Writable,
+    {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self.0.write_to(writer);
+            self.1.write_to(writer);
+            self.2.write_to(writer);
+        }
+    }
+
+    impl<T0, T1, T2, T3> Writable for (T0, T1, T2, T3)
+    where
+        T0: Writable,
+        T1: Writable,
+        T2: Writable,
+        T3: Writable,
+    {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self.0.write_to(writer);
+            self.1.write_to(writer);
+            self.2.write_to(writer);
+            self.3.write_to(writer);
         }
     }
 }
@@ -151,6 +257,9 @@ mod tests {
         buf.write(&foo);
         buf.write(&mut foo);
         buf.write(&(&foo, &foo));
-        assert_eq!(arr, [0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            arr,
+            [0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0, 0, 0, 0, 0, 0]
+        );
     }
 }
