@@ -180,6 +180,50 @@ pub mod le {
         }
     }
 
+    impl<T: Writable> Writable for [T; 0] {
+        #[inline]
+        fn write_to<W: Writer>(self, _writer: &mut W) {}
+    }
+
+    impl<T: Writable + Copy> Writable for [T; 1] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self[0].write_to(writer);
+        }
+    }
+
+    impl<T: Writable + Copy> Writable for [T; 2] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self[0].write_to(writer);
+            self[1].write_to(writer);
+        }
+    }
+
+    impl<T: Writable + Copy> Writable for [T; 3] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self[0].write_to(writer);
+            self[1].write_to(writer);
+            self[2].write_to(writer);
+        }
+    }
+
+    impl<T: Writable + Copy> Writable for [T; 4] {
+        #[inline]
+        fn write_to<W: Writer>(self, writer: &mut W) {
+            self[0].write_to(writer);
+            self[1].write_to(writer);
+            self[2].write_to(writer);
+            self[3].write_to(writer);
+        }
+    }
+
+    impl Writable for () {
+        #[inline]
+        fn write_to<W: Writer>(self, _writer: &mut W) {}
+    }
+
     impl<T0: Writable, T1: Writable> Writable for (T0, T1) {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
