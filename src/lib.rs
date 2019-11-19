@@ -8,16 +8,37 @@ pub mod le {
         fn write<T: Writable>(&mut self, item: T) -> &mut Self;
     }
 
-    pub trait Writable {
+    pub trait Writable: Copy {
         fn write_to<W: Writer>(self, writer: &mut W);
+
+        #[inline]
+        fn size(&self) -> usize {
+            *0.write(self)
+        }
     }
 
+    /// Writing to a u8 slice packs the bytes at its start and updates it to point to the remaining
+    /// free space.
     impl Writer for &mut [u8] {
         #[inline]
         fn write_slice(&mut self, items: &[u8]) {
             let (h, t) = core::mem::replace(self, &mut []).split_at_mut(items.len());
             h.copy_from_slice(items);
             *self = t;
+        }
+
+        #[inline]
+        fn write<T: Writable>(&mut self, item: T) -> &mut Self {
+            item.write_to(self);
+            self
+        }
+    }
+
+    /// Writing to a usize increases it by the number of bytes that would be written.
+    impl Writer for usize {
+        #[inline]
+        fn write_slice(&mut self, items: &[u8]) {
+            *self += items.len();
         }
 
         #[inline]
@@ -111,30 +132,14 @@ pub mod le {
         }
     }
 
-    impl<T: Writable + Copy> Writable for &T {
+    impl<T: Writable> Writable for &T {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             (*self).write_to(writer);
         }
     }
 
-    impl<T: Writable + Copy> Writable for &mut T {
-        #[inline]
-        fn write_to<W: Writer>(self, writer: &mut W) {
-            (*self).write_to(writer);
-        }
-    }
-
-    impl<T: Writable + Copy> Writable for &[T] {
-        #[inline]
-        fn write_to<W: Writer>(self, writer: &mut W) {
-            for item in self {
-                item.write_to(writer);
-            }
-        }
-    }
-
-    impl<T: Writable + Copy> Writable for &mut [T] {
+    impl<T: Writable> Writable for &[T] {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             for item in self {
@@ -148,14 +153,14 @@ pub mod le {
         fn write_to<W: Writer>(self, _writer: &mut W) {}
     }
 
-    impl<T: Writable + Copy> Writable for [T; 1] {
+    impl<T: Writable> Writable for [T; 1] {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             self[0].write_to(writer);
         }
     }
 
-    impl<T: Writable + Copy> Writable for [T; 2] {
+    impl<T: Writable> Writable for [T; 2] {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             self[0].write_to(writer);
@@ -163,7 +168,7 @@ pub mod le {
         }
     }
 
-    impl<T: Writable + Copy> Writable for [T; 3] {
+    impl<T: Writable> Writable for [T; 3] {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             self[0].write_to(writer);
@@ -172,7 +177,7 @@ pub mod le {
         }
     }
 
-    impl<T: Writable + Copy> Writable for [T; 4] {
+    impl<T: Writable> Writable for [T; 4] {
         #[inline]
         fn write_to<W: Writer>(self, writer: &mut W) {
             self[0].write_to(writer);
@@ -257,13 +262,12 @@ mod tests {
     #[test]
     fn mix_ref_types() {
         use crate::le::Writer;
-        let mut foo: u16 = some_u16();
+        let foo: u16 = some_u16();
         let mut arr = [0u8; 16];
         let mut buf: &mut [u8] = &mut arr;
         buf.write(foo);
-        buf.write(&foo);
-        buf.write(&mut foo);
-        buf.write(&(&foo, &foo));
+        buf.write((&foo, ()));
+        buf.write(&(&[foo, foo], [foo]));
         assert_eq!(
             arr,
             [0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0x37, 0x13, 0, 0, 0, 0, 0, 0]
