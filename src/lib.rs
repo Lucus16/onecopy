@@ -134,6 +134,13 @@ macro_rules! endian_mod {
                 }
             }
 
+            impl Writable for &str {
+                #[inline]
+                fn write_to<W: Writer>(self, writer: &mut W) {
+                    writer.write_slice(&self.as_bytes())
+                }
+            }
+
             impl<T: Writable> Writable for &T {
                 #[inline]
                 fn write_to<W: Writer>(self, writer: &mut W) {
